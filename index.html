@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Megan Liz Smith - Past and Present</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: #fdf8f3; color: #2c2416; min-height: 100vh; }
+    .header { background: #2c2416; padding: 1.1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+    .header-left h1 { font-family: 'Lora', serif; font-size: 19px; font-weight: 400; color: #fdf8f3; }
+    .header-left .date { font-size: 11px; color: #b8a898; margin-top: 2px; font-weight: 300; }
+    .clock { font-family: 'Lora', serif; font-size: 20px; color: #e8d5bf; }
+    .tabs { display: flex; background: #3d2e22; }
+    .tab { flex: 1; padding: 10px; text-align: center; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #b8a898; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .tab.active { color: #e8d5bf; border-bottom-color: #c4956a; }
+    .tab:hover { color: #e8d5bf; }
+    .sync-bar { font-size: 11px; color: #b8a898; text-align: right; padding: 4px 12px; font-style: italic; background: #fdf8f3; }
+    .sync-bar.error { color: #c4956a; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .main { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; }
+    @media (max-width: 600px) { .main { grid-template-columns: 1fr; } }
+    .card { background: #fff8f0; border: 0.5px solid #e8d5bf; border-radius: 14px; padding: 1rem 1.125rem; }
+    .card-title { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #b8a898; margin-bottom: 0.75rem; }
+    .log-card { grid-column: 1 / -1; }
+    .mood-row { display: flex; gap: 8px; margin-bottom: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .mood-btn { background: #fdf8f3; border: 1.5px solid #e8d5bf; border-radius: 40px; padding: 6px 14px; cursor: pointer; font-size: 13px; transition: all 0.15s; display: flex; align-items: center; gap: 6px; color: #6b5240; font-family: 'DM Sans', sans-serif; }
+    .mood-btn .emoji { font-size: 18px; }
+    .mood-btn:hover { border-color: #c4956a; background: #fef3e8; }
+    .mood-btn.selected { background: #2c2416; border-color: #2c2416; color: #fdf8f3; }
+    .other-btn { background: #fdf8f3; border: 1.5px dashed #c4b5a5; border-radius: 40px; padding: 6px 14px; cursor: pointer; font-size: 13px; color: #b8a898; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .other-btn:hover { border-color: #c4956a; color: #6b5240; background: #fef3e8; }
+    .other-mood-wrap { display: flex; align-items: center; gap: 6px; }
+    .emoji-input { width: 52px; background: #fdf8f3; border: 1.5px solid #e8d5bf; border-radius: 40px; padding: 5px 10px; font-size: 18px; text-align: center; outline: none; font-family: 'DM Sans', sans-serif; color: #2c2416; }
+    .emoji-input:focus { border-color: #c4956a; }
+    .emoji-confirm { background: #2c2416; color: #fdf8f3; border: none; border-radius: 20px; padding: 5px 12px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .activity-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.75rem; align-items: center; }
+    .act-btn { background: #fdf8f3; border: 1px solid #e8d5bf; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #6b5240; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .act-btn:hover { background: #fef3e8; border-color: #c4956a; }
+    .act-btn.selected { background: #7a5c42; color: #fdf8f3; border-color: #7a5c42; }
+    .other-act-btn { background: #fdf8f3; border: 1px dashed #c4b5a5; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #b8a898; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+    .other-act-btn:hover { border-color: #c4956a; color: #6b5240; }
+    .custom-act-wrap { display: flex; align-items: center; gap: 6px; }
+    .custom-act-input { width: 120px; background: #fdf8f3; border: 1px solid #e8d5bf; border-radius: 20px; padding: 4px 12px; font-size: 12px; color: #2c2416; outline: none; font-family: 'DM Sans', sans-serif; }
+    .custom-act-input:focus { border-color: #c4956a; }
+    .section-divider { font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: #c4b5a5; margin: 10px 0 6px; }
+    .journal-box { width: 100%; background: #fdf8f3; border: 1px solid #e8d5bf; border-radius: 10px; padding: 10px 12px; font-family: 'Lora', serif; font-size: 14px; color: #2c2416; line-height: 1.7; resize: vertical; min-height: 80px; outline: none; transition: border-color 0.15s; }
+    .journal-box:focus { border-color: #c4956a; }
+    .journal-box::placeholder { color: #c4b5a5; font-style: italic; }
+    .flag-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .flag-btn { border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; border: 1.5px solid; display: flex; align-items: center; gap: 5px; }
+    .flag-btn.red { background: #fff0f0; border-color: #f09595; color: #a32d2d; }
+    .flag-btn.red.selected { background: #e24b4a; border-color: #e24b4a; color: #fff; }
+    .flag-btn.green { background: #f0faf0; border-color: #97c459; color: #3b6d11; }
+    .flag-btn.green.selected { background: #639922; border-color: #639922; color: #fff; }
+    .flag-btn.blue { background: #f0f6ff; border-color: #85b7eb; color: #185fa5; }
+    .flag-btn.blue.selected { background: #378add; border-color: #378add; color: #fff; }
+    .flag-btn.yellow { background: #fffbf0; border-color: #fac775; color: #854f0b; }
+    .flag-btn.yellow.selected { background: #ef9f27; border-color: #ef9f27; color: #fff; }
+    .flag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .flag-dot.red { background: #e24b4a; }
+    .flag-dot.green { background: #639922; }
+    .flag-dot.blue { background: #378add; }
+    .flag-dot.yellow { background: #ef9f27; }
+    .log-btn { margin-top: 10px; background: #2c2416; color: #fdf8f3; border: none; border-radius: 8px; padding: 8px 18px; font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer; transition: opacity 0.15s; }
+    .log-btn:hover { opacity: 0.85; }
+    .log-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .entries-list { display: flex; flex-direction: column; gap: 8px; max-height: 260px; overflow-y: auto; }
+    .entry { background: #fdf8f3; border: 0.5px solid #e8d5bf; border-radius: 10px; padding: 10px 12px; }
+    .entry-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+    .entry-time { font-size: 11px; color: #b8a898; font-weight: 500; }
+    .entry-mood-icon { font-size: 16px; }
+    .entry-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+    .entry-tag { font-size: 10px; background: #ede0d0; color: #7a5c42; border-radius: 20px; padding: 2px 8px; }
+    .entry-note { font-family: 'Lora', serif; font-size: 13px; color: #5c4535; line-height: 1.6; margin-top: 4px; font-style: italic; }
+    .entry-flag { font-size: 10px; border-radius: 20px; padding: 2px 8px; font-weight: 500; }
+    .entry-flag.red { background: #fcebeb; color: #a32d2d; }
+    .entry-flag.green { background: #eaf3de; color: #3b6d11; }
+    .entry-flag.blue { background: #e6f1fb; color: #185fa5; }
+    .entry-flag.yellow { background: #faeeda; color: #854f0b; }
+    .empty-state { font-size: 13px; color: #c4b5a5; font-style: italic; font-family: 'Lora', serif; text-align: center; padding: 1rem 0; }
+    .goals-list { display: flex; flex-direction: column; gap: 8px; }
+    .goal-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; background: #fdf8f3; border: 0.5px solid #e8d5bf; border-radius: 8px; }
+    .goal-dot { width: 8px; height: 8px; border-radius: 50%; background: #c4956a; margin-top: 5px; flex-shrink: 0; }
+    .goal-text { font-size: 13px; color: #3d2e22; line-height: 1.5; flex: 1; }
+    .goal-input-row { display: flex; gap: 6px; margin-top: 8px; }
+    .goal-input { flex: 1; background: #fdf8f3; border: 1px solid #e8d5bf; border-radius: 8px; padding: 6px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: #2c2416; outline: none; }
+    .goal-input:focus { border-color: #c4956a; }
+    .goal-input::placeholder { color: #c4b5a5; }
+    .add-btn { background: #c4956a; color: #fff; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .projects-list { display: flex; flex-direction: column; gap: 6px; }
+    .project-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #fdf8f3; border: 0.5px solid #e8d5bf; border-radius: 8px; }
+    .project-name { font-size: 13px; color: #3d2e22; }
+    .project-due { font-size: 11px; color: #b8a898; }
+    .project-due.soon { color: #c4956a; font-weight: 500; }
+    .del-btn { background: none; border: none; color: #c4b5a5; cursor: pointer; font-size: 14px; padding: 0 0 0 6px; }
+    .del-btn:hover { color: #9e6347; }
+    .cal-wrap { padding: 12px; }
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .cal-nav-btn { background: #fff8f0; border: 0.5px solid #e8d5bf; border-radius: 8px; padding: 6px 14px; font-size: 13px; color: #6b5240; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .cal-nav-btn:hover { background: #fef3e8; }
+    .cal-month { font-family: 'Lora', serif; font-size: 18px; color: #2c2416; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-dow { text-align: center; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; color: #b8a898; padding: 4px 0 6px; text-transform: uppercase; }
+    .cal-day { background: #fff8f0; border: 0.5px solid #e8d5bf; border-radius: 10px; min-height: 62px; padding: 6px 4px 4px; text-align: center; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .cal-day:hover { border-color: #c4956a; background: #fef3e8; }
+    .cal-day.empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+    .cal-day.today { border-color: #c4956a; border-width: 1.5px; }
+    .cal-day.has-entry { background: #fef3e8; }
+    .cal-day-num { font-size: 11px; color: #b8a898; font-weight: 500; }
+    .cal-day.today .cal-day-num { color: #c4956a; }
+    .cal-day-emoji { font-size: 17px; line-height: 1; }
+    .cal-day-flags { display: flex; gap: 2px; justify-content: center; flex-wrap: wrap; margin-top: 1px; }
+    .cal-flag-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .detail-panel-wrap { background: #fff8f0; border: 0.5px solid #e8d5bf; border-radius: 14px; padding: 1rem 1.125rem; margin-top: 12px; }
+    .detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .detail-date { font-family: 'Lora', serif; font-size: 15px; color: #2c2416; }
+    .detail-close { background: none; border: none; color: #b8a898; font-size: 20px; cursor: pointer; }
+    .detail-close:hover { color: #6b5240; }
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat-card { background: #fff8f0; border: 0.5px solid #e8d5bf; border-radius: 10px; padding: 10px 12px; text-align: center; }
+    .stat-label { font-size: 10px; color: #b8a898; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+    .stat-val { font-size: 22px; line-height: 1.2; }
+    .stat-sub { font-size: 11px; color: #b8a898; margin-top: 2px; }
+    .followups-wrap { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .followup-filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+    .filter-btn { border-radius: 20px; padding: 4px 12px; font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; border: 1px solid #e8d5bf; background: #fff8f0; color: #6b5240; transition: all 0.15s; }
+    .filter-btn.active { background: #2c2416; color: #fdf8f3; border-color: #2c2416; }
+    .followup-item { background: #fff8f0; border: 0.5px solid #e8d5bf; border-radius: 12px; padding: 10px 12px; border-left: 3px solid #e8d5bf; margin-bottom: 8px; }
+    .followup-item.red { border-left-color: #e24b4a; }
+    .followup-item.green { border-left-color: #639922; }
+    .followup-item.blue { border-left-color: #378add; }
+    .followup-item.yellow { border-left-color: #ef9f27; }
+    .followup-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; flex-wrap: wrap; gap: 6px; }
+    .followup-date { font-size: 11px; color: #b8a898; }
+    .followup-note { font-family: 'Lora', serif; font-size: 13px; color: #5c4535; line-height: 1.6; font-style: italic; }
+    .done-btn { background: none; border: 1px solid #e8d5bf; border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #b8a898; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
+    .done-btn:hover { border-color: #c4956a; color: #6b5240; }
+    .followup-empty { font-size: 13px; color: #c4b5a5; font-style: italic; font-family: 'Lora', serif; text-align: center; padding: 2rem 0; }
+    .badge { display: inline-block; background: #e24b4a; color: #fff; border-radius: 10px; font-size: 10px; padding: 1px 6px; margin-left: 4px; vertical-align: middle; font-family: 'DM Sans', sans-serif; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Megan Liz Smith - Past and Present</h1>
+    <div class="date" id="date-display"></div>
+  </div>
+  <div class="clock" id="clock-display"></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('today')">Today</div>
+  <div class="tab" onclick="switchTab('calendar')">Calendar</div>
+  <div class="tab" onclick="switchTab('followups')">Follow-ups <span class="badge" id="followup-badge" style="display:none">0</span></div>
+</div>
+<div class="sync-bar" id="sync-bar">connecting...</div>
+
+<div id="view-today" class="view active">
+  <div class="main">
+    <div class="card log-card">
+      <div class="card-title">How are you right now?</div>
+      <div class="mood-row" id="mood-row">
+        <button class="mood-btn" onclick="selectMood(this,'😊','Great')"><span class="emoji">😊</span> Great</button>
+        <button class="mood-btn" onclick="selectMood(this,'😐','Okay')"><span class="emoji">😐</span> Okay</button>
+        <button class="mood-btn" onclick="selectMood(this,'😔','Low')"><span class="emoji">😔</span> Low</button>
+        <button class="mood-btn" onclick="selectMood(this,'😬','Anxious')"><span class="emoji">😬</span> Anxious</button>
+        <button class="mood-btn" onclick="selectMood(this,'😴','Tired')"><span class="emoji">😴</span> Tired</button>
+        <button class="mood-btn" onclick="selectMood(this,'🎯','Focused')"><span class="emoji">🎯</span> Focused</button>
+        <button class="other-btn" id="mood-other-btn" onclick="toggleMoodOther()">+ Other</button>
+        <div class="other-mood-wrap" id="mood-other-wrap" style="display:none;">
+          <input class="emoji-input" id="custom-emoji-input" placeholder="😌" maxlength="2" />
+          <button class="emoji-confirm" onclick="confirmCustomMood()">Use this mood</button>
+        </div>
+      </div>
+      <div class="section-divider">What are you doing?</div>
+      <div class="activity-row" id="act-row">
+        <button class="act-btn" onclick="toggleAct(this)">Working</button>
+        <button class="act-btn" onclick="toggleAct(this)">Resting</button>
+        <button class="act-btn" onclick="toggleAct(this)">Exercising</button>
+        <button class="act-btn" onclick="toggleAct(this)">Eating</button>
+        <button class="act-btn" onclick="toggleAct(this)">Socializing</button>
+        <button class="act-btn" onclick="toggleAct(this)">Creating</button>
+        <button class="act-btn" onclick="toggleAct(this)">Errands</button>
+        <button class="act-btn" onclick="toggleAct(this)">Outdoors</button>
+        <button class="other-act-btn" id="act-other-btn" onclick="toggleActOther()">+ Other</button>
+        <div class="custom-act-wrap" id="act-other-wrap" style="display:none;">
+          <input class="custom-act-input" id="custom-act-input" placeholder="Type activity..." />
+          <button class="emoji-confirm" onclick="confirmCustomAct()">Add</button>
+        </div>
+      </div>
+      <div class="section-divider">Notes</div>
+      <textarea class="journal-box" id="journal-input" placeholder="What's on your mind? A thought, a feeling, a moment worth keeping..."></textarea>
+      <div class="section-divider" style="margin-top:12px;">Flag this entry for follow-up?</div>
+      <div class="flag-row">
+        <button class="flag-btn red" data-flag="red" onclick="selectFlag(this)"><div class="flag-dot red"></div> Professional idea/task</button>
+        <button class="flag-btn green" data-flag="green" onclick="selectFlag(this)"><div class="flag-dot green"></div> Social</button>
+        <button class="flag-btn blue" data-flag="blue" onclick="selectFlag(this)"><div class="flag-dot blue"></div> Personal</button>
+        <button class="flag-btn yellow" data-flag="yellow" onclick="selectFlag(this)"><div class="flag-dot yellow"></div> Other</button>
+      </div>
+      <button class="log-btn" id="save-btn" onclick="saveEntry()">Save this moment</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Today's log</div>
+      <div class="entries-list" id="entries-list">
+        <div class="empty-state">Your entries will appear here</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Big goals</div>
+      <div class="goals-list" id="goals-list"></div>
+      <div class="goal-input-row">
+        <input class="goal-input" id="goal-input" placeholder="Add a goal..." />
+        <button class="add-btn" onclick="addGoal()">Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Upcoming projects</div>
+      <div class="projects-list" id="projects-list"></div>
+      <div class="goal-input-row">
+        <input class="goal-input" id="project-input" placeholder="Project name..." style="flex:2" />
+        <input class="goal-input" id="project-due" placeholder="Due..." style="flex:1" />
+        <button class="add-btn" onclick="addProject()">Add</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-calendar" class="view">
+  <div class="cal-wrap">
+    <div class="stats-row" id="stats-row"></div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="changeMonth(-1)">&#8592; Prev</button>
+      <div class="cal-month" id="cal-month-label"></div>
+      <button class="cal-nav-btn" onclick="changeMonth(1)">Next &#8594;</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div id="detail-panel" style="display:none;"></div>
+  </div>
+</div>
+
+<div id="view-followups" class="view">
+  <div class="followups-wrap">
+    <div class="followup-filter-row">
+      <button class="filter-btn active" data-filter="all" onclick="filterFollowups(this)">All</button>
+      <button class="filter-btn" data-filter="red" onclick="filterFollowups(this)"><span style="color:#e24b4a">●</span> Professional</button>
+      <button class="filter-btn" data-filter="green" onclick="filterFollowups(this)"><span style="color:#639922">●</span> Social</button>
+      <button class="filter-btn" data-filter="blue" onclick="filterFollowups(this)"><span style="color:#378add">●</span> Personal</button>
+      <button class="filter-btn" data-filter="yellow" onclick="filterFollowups(this)"><span style="color:#ef9f27">●</span> Other</button>
+    </div>
+    <div id="followups-list"></div>
+  </div>
+</div>
+
+<div style="padding: 12px 12px 24px;">
+  <div style="background:#fff8f0;border:0.5px solid #e8d5bf;border-radius:14px;padding:1rem 1.125rem;">
+    <div style="font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:#b8a898;margin-bottom:0.5rem;">Backup your data</div>
+    <p style="font-size:13px;color:#6b5240;line-height:1.6;margin-bottom:0.75rem;">Download all your entries as a spreadsheet file you can keep forever — on your computer, in Google Drive, anywhere you like.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="exportCSV()" style="background:#2c2416;color:#fdf8f3;border:none;border-radius:8px;padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">Download entries as spreadsheet</button>
+      <button onclick="exportJSON()" style="background:#fff8f0;color:#6b5240;border:1px solid #e8d5bf;border-radius:8px;padding:8px 18px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">Download full backup (.json)</button>
+    </div>
+    <p style="font-size:11px;color:#b8a898;margin-top:8px;font-style:italic;">Tip: do this once a month and save it somewhere safe.</p>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://lspxobnvudpirgfouozh.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzcHhvYm52dWRwaXJnZm91b3poIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2NDI4NDYsImV4cCI6MjA5MDIxODg0Nn0.dsDNGt6_ULmONQOeZVbbr4J5qYUuaz4UkxdjMpc714Q';
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const PRESET_ACTS = ['Working','Resting','Exercising','Eating','Socializing','Creating','Errands','Outdoors'];
+  const FLAG_LABELS = { red:'Professional idea/task', green:'Social', blue:'Personal', yellow:'Other' };
+  const FLAG_COLORS = { red:'#e24b4a', green:'#639922', blue:'#378add', yellow:'#ef9f27' };
+
+  let selectedMood = null, selectedMoodEmoji = null, selectedActivities = [], selectedFlag = null;
+  let allEntries = {}, goals = [], projects = [];
+  let calYear, calMonth, activeFilter = 'all';
+
+  function pad(n) { return n < 10 ? '0' + n : n; }
+  function todayKey() { const n = new Date(); return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate()); }
+  function fmtKey(key) {
+    const [y,m,d] = key.split('-');
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return months[parseInt(m)-1]+' '+parseInt(d)+', '+y;
+  }
+
+  function setSync(msg, isError) {
+    const el = document.getElementById('sync-bar');
+    el.textContent = msg;
+    el.className = 'sync-bar'+(isError?' error':'');
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const h = now.getHours(), m = pad(now.getMinutes());
+    document.getElementById('clock-display').textContent = (h%12||12)+':'+m+(h>=12?'pm':'am');
+    const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('date-display').textContent = days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate();
+  }
+  setInterval(updateClock,1000); updateClock();
+
+  function switchTab(tab) {
+    ['today','calendar','followups'].forEach(t => {
+      document.getElementById('view-'+t).classList.toggle('active', t===tab);
+    });
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active',['today','calendar','followups'][i]===tab));
+    if (tab==='calendar') { calYear=undefined; renderCalendar(); }
+    if (tab==='followups') renderFollowups();
+  }
+
+  function selectMood(btn,emoji,label) {
+    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedMood=label; selectedMoodEmoji=emoji;
+    document.getElementById('mood-other-wrap').style.display='none';
+  }
+
+  function toggleMoodOther() {
+    const w=document.getElementById('mood-other-wrap');
+    const showing=w.style.display!=='none';
+    w.style.display=showing?'none':'flex';
+    if (!showing) { document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected')); selectedMood=null; selectedMoodEmoji=null; document.getElementById('custom-emoji-input').focus(); }
+  }
+
+  function confirmCustomMood() {
+    const val=document.getElementById('custom-emoji-input').value.trim();
+    if (!val) return;
+    selectedMoodEmoji=val; selectedMood='Custom';
+    const btn=document.getElementById('mood-other-btn');
+    btn.textContent=val+' (selected)'; btn.style.borderStyle='solid'; btn.style.borderColor='#2c2416'; btn.style.color='#2c2416';
+    document.getElementById('mood-other-wrap').style.display='none';
+  }
+
+  function toggleActOther() {
+    const w=document.getElementById('act-other-wrap');
+    w.style.display=w.style.display!=='none'?'none':'flex';
+    if (w.style.display==='flex') document.getElementById('custom-act-input').focus();
+  }
+
+  function confirmCustomAct() {
+    const val=document.getElementById('custom-act-input').value.trim();
+    if (!val) return;
+    const row=document.getElementById('act-row');
+    const btn=document.createElement('button');
+    btn.className='act-btn selected'; btn.textContent=val;
+    btn.onclick=function(){toggleAct(this);};
+    row.insertBefore(btn,document.getElementById('act-other-btn'));
+    selectedActivities.push(val);
+    document.getElementById('custom-act-input').value='';
+    document.getElementById('act-other-wrap').style.display='none';
+  }
+
+  function toggleAct(btn) {
+    btn.classList.toggle('selected');
+    const act=btn.textContent;
+    if (btn.classList.contains('selected')) selectedActivities.push(act);
+    else selectedActivities=selectedActivities.filter(a=>a!==act);
+  }
+
+  function selectFlag(btn) {
+    const flag=btn.dataset.flag;
+    if (selectedFlag===flag) { btn.classList.remove('selected'); selectedFlag=null; }
+    else { document.querySelectorAll('.flag-btn').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); selectedFlag=flag; }
+  }
+
+  async function saveEntry() {
+    const note=document.getElementById('journal-input').value.trim();
+    if (!selectedMood && !note && !selectedActivities.length) return;
+    const btn=document.getElementById('save-btn');
+    btn.disabled=true; btn.textContent='Saving...';
+    const now=new Date();
+    const h=now.getHours(), m=pad(now.getMinutes());
+    const entry={
+      day_key:todayKey(),
+      time_label:(h%12||12)+':'+m+(h>=12?'pm':'am'),
+      mood:selectedMood, emoji:selectedMoodEmoji,
+      activities:selectedActivities, note:note,
+      flag:selectedFlag, dismissed:false,
+      created_at:now.toISOString()
+    };
+    const {data,error}=await db.from('entries').insert(entry).select().single();
+    if (error) { setSync('save failed — check connection',true); }
+    else {
+      setSync('saved ✓',false);
+      const saved=data||entry;
+      if (!allEntries[saved.day_key]) allEntries[saved.day_key]=[];
+      allEntries[saved.day_key].unshift(saved);
+      renderTodayEntries(); updateFollowupBadge();
+    }
+    btn.disabled=false; btn.textContent='Save this moment';
+    document.getElementById('journal-input').value='';
+    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+    document.querySelectorAll('#act-row .act-btn').forEach(b=>{ if(!PRESET_ACTS.includes(b.textContent)) b.remove(); else b.classList.remove('selected'); });
+    document.querySelectorAll('.flag-btn').forEach(b=>b.classList.remove('selected'));
+    const ob=document.getElementById('mood-other-btn');
+    ob.textContent='+ Other'; ob.style.borderStyle='dashed'; ob.style.borderColor='#c4b5a5'; ob.style.color='#b8a898';
+    document.getElementById('mood-other-wrap').style.display='none';
+    document.getElementById('act-other-wrap').style.display='none';
+    selectedMood=null; selectedMoodEmoji=null; selectedActivities=[]; selectedFlag=null;
+  }
+
+  function renderTodayEntries() {
+    const el=document.getElementById('entries-list');
+    const entries=allEntries[todayKey()]||[];
+    if (!entries.length) { el.innerHTML='<div class="empty-state">Your entries will appear here</div>'; return; }
+    el.innerHTML=entries.map(e=>`
+      <div class="entry">
+        <div class="entry-meta">
+          <span class="entry-time">${e.time_label}</span>
+          ${e.emoji?'<span class="entry-mood-icon">'+e.emoji+'</span>':''}
+          ${e.flag?'<span class="entry-flag '+e.flag+'">'+FLAG_LABELS[e.flag]+'</span>':''}
+          <div class="entry-tags">${(e.activities||[]).map(a=>'<span class="entry-tag">'+a+'</span>').join('')}</div>
+        </div>
+        ${e.note?'<div class="entry-note">'+e.note+'</div>':''}
+      </div>`).join('');
+  }
+
+  function getAllFlagged() {
+    const result=[];
+    Object.keys(allEntries).sort().reverse().forEach(key=>{
+      (allEntries[key]||[]).forEach(e=>{ if(e.flag&&!e.dismissed) result.push(e); });
+    });
+    return result;
+  }
+
+  function updateFollowupBadge() {
+    const count=getAllFlagged().length;
+    const badge=document.getElementById('followup-badge');
+    badge.style.display=count>0?'inline-block':'none';
+    badge.textContent=count;
+  }
+
+  function filterFollowups(btn) {
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter=btn.dataset.filter;
+    renderFollowups();
+  }
+
+  function renderFollowups() {
+    const el=document.getElementById('followups-list');
+    let items=getAllFlagged();
+    if (activeFilter!=='all') items=items.filter(e=>e.flag===activeFilter);
+    if (!items.length) { el.innerHTML='<div class="followup-empty">No follow-ups here yet.<br>Flag an entry to see it here.</div>'; return; }
+    el.innerHTML=items.map(e=>`
+      <div class="followup-item ${e.flag}">
+        <div class="followup-top">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="entry-flag ${e.flag}">${FLAG_LABELS[e.flag]}</span>
+            <span class="followup-date">${fmtKey(e.day_key)} · ${e.time_label}</span>
+            ${e.emoji?'<span>'+e.emoji+'</span>':''}
+          </div>
+          <button class="done-btn" onclick="dismissFollowup(${e.id})">Done ✓</button>
+        </div>
+        ${e.note?'<div class="followup-note">'+e.note+'</div>':'<div class="followup-note" style="color:#c4b5a5">No note added.</div>'}
+      </div>`).join('');
+  }
+
+  async function dismissFollowup(id) {
+    await db.from('entries').update({dismissed:true}).eq('id',id);
+    Object.keys(allEntries).forEach(key=>{ const e=allEntries[key].find(e=>e.id===id); if(e) e.dismissed=true; });
+    renderFollowups(); updateFollowupBadge();
+  }
+
+  async function addGoal() {
+    const val=document.getElementById('goal-input').value.trim();
+    if (!val) return;
+    const {data,error}=await db.from('goals').insert({text:val}).select().single();
+    if (!error) { goals.push(data||{text:val}); document.getElementById('goal-input').value=''; renderGoals(); }
+    else setSync('could not save goal',true);
+  }
+
+  async function removeGoal(id,i) {
+    await db.from('goals').delete().eq('id',id);
+    goals.splice(i,1); renderGoals();
+  }
+
+  function renderGoals() {
+    document.getElementById('goals-list').innerHTML=goals.map((g,i)=>`
+      <div class="goal-item"><div class="goal-dot"></div><span class="goal-text">${g.text}</span>
+      <button class="del-btn" onclick="removeGoal(${g.id},${i})">×</button></div>`).join('');
+  }
+
+  async function addProject() {
+    const name=document.getElementById('project-input').value.trim();
+    const due=document.getElementById('project-due').value.trim();
+    if (!name) return;
+    const {data,error}=await db.from('projects').insert({name,due}).select().single();
+    if (!error) { projects.push(data||{name,due}); document.getElementById('project-input').value=''; document.getElementById('project-due').value=''; renderProjects(); }
+    else setSync('could not save project',true);
+  }
+
+  async function removeProject(id,i) {
+    await db.from('projects').delete().eq('id',id);
+    projects.splice(i,1); renderProjects();
+  }
+
+  function renderProjects() {
+    document.getElementById('projects-list').innerHTML=projects.map((p,i)=>`
+      <div class="project-item"><span class="project-name">${p.name}</span>
+      <span class="project-due ${p.due?'soon':''}">${p.due||''}</span>
+      <button class="del-btn" onclick="removeProject(${p.id},${i})">×</button></div>`).join('');
+  }
+
+  function getDayEmoji(key) {
+    const entries=(allEntries[key]||[]).filter(e=>e.emoji);
+    if (!entries.length) return null;
+    if (entries.length<=2) return entries[0].emoji;
+    const counts={};
+    entries.forEach(e=>{counts[e.emoji]=(counts[e.emoji]||0)+1;});
+    const max=Math.max(...Object.values(counts));
+    if (max===1) return entries[0].emoji;
+    return Object.entries(counts).filter(([,v])=>v===max)[0][0];
+  }
+
+  function getDayFlags(key) {
+    return [...new Set((allEntries[key]||[]).filter(e=>e.flag).map(e=>e.flag))];
+  }
+
+  function calcStreak() {
+    let streak=0; const d=new Date();
+    while(true) {
+      const key=d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+      if(allEntries[key]&&allEntries[key].length){streak++;d.setDate(d.getDate()-1);}else break;
+    }
+    return streak;
+  }
+
+  function renderStats() {
+    const allKeys=Object.keys(allEntries);
+    const streak=calcStreak();
+    const moodCounts={};
+    allKeys.forEach(k=>(allEntries[k]||[]).forEach(e=>{if(e.mood) moodCounts[e.mood]=(moodCounts[e.mood]||0)+1;}));
+    const topEntry=Object.entries(moodCounts).sort((a,b)=>b[1]-a[1])[0];
+    const topEmoji=topEntry?(allKeys.flatMap(k=>allEntries[k]).find(e=>e.mood===topEntry[0])||{}).emoji||'—':'—';
+    const total=allKeys.reduce((s,k)=>s+(allEntries[k]||[]).length,0);
+    document.getElementById('stats-row').innerHTML=`
+      <div class="stat-card"><div class="stat-label">Streak</div><div class="stat-val">${streak}</div><div class="stat-sub">days logged</div></div>
+      <div class="stat-card"><div class="stat-label">Top mood</div><div class="stat-val">${topEmoji}</div><div class="stat-sub">${topEntry?topEntry[0]:'no data yet'}</div></div>
+      <div class="stat-card"><div class="stat-label">Total entries</div><div class="stat-val">${total}</div><div class="stat-sub">moments logged</div></div>`;
+  }
+
+  function renderCalendar() {
+    const now=new Date();
+    if(calYear===undefined){calYear=now.getFullYear();calMonth=now.getMonth();}
+    const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('cal-month-label').textContent=months[calMonth]+' '+calYear;
+    const firstDay=new Date(calYear,calMonth,1).getDay();
+    const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+    const todayStr=todayKey();
+    const dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    let html=dows.map(d=>'<div class="cal-dow">'+d+'</div>').join('');
+    for(let i=0;i<firstDay;i++) html+='<div class="cal-day empty"></div>';
+    for(let d=1;d<=daysInMonth;d++){
+      const key=calYear+'-'+pad(calMonth+1)+'-'+pad(d);
+      const isToday=key===todayStr;
+      const emoji=getDayEmoji(key);
+      const flags=getDayFlags(key);
+      const hasEntry=!!(allEntries[key]&&allEntries[key].length);
+      const flagDots=flags.map(f=>`<div class="cal-flag-dot" style="background:${FLAG_COLORS[f]}"></div>`).join('');
+      html+=`<div class="cal-day${isToday?' today':''}${hasEntry?' has-entry':''}" onclick="showDayDetail('${key}')">
+        <span class="cal-day-num">${d}</span>
+        ${emoji?'<span class="cal-day-emoji">'+emoji+'</span>':(hasEntry?'<div style="width:5px;height:5px;border-radius:50%;background:#c4956a;margin-top:2px"></div>':'')}
+        ${flagDots?'<div class="cal-day-flags">'+flagDots+'</div>':''}
+      </div>`;
+    }
+    document.getElementById('cal-grid').innerHTML=html;
+    renderStats();
+    document.getElementById('detail-panel').style.display='none';
+  }
+
+  function changeMonth(dir){
+    calMonth+=dir;
+    if(calMonth>11){calMonth=0;calYear++;}
+    if(calMonth<0){calMonth=11;calYear--;}
+    renderCalendar();
+  }
+
+  function showDayDetail(key){
+    const entries=allEntries[key];
+    if(!entries||!entries.length) return;
+    const panel=document.getElementById('detail-panel');
+    const html=entries.map(e=>`
+      <div class="entry">
+        <div class="entry-meta">
+          <span class="entry-time">${e.time_label}</span>
+          ${e.emoji?'<span class="entry-mood-icon">'+e.emoji+'</span>':''}
+          ${e.flag?'<span class="entry-flag '+e.flag+'">'+FLAG_LABELS[e.flag]+'</span>':''}
+          <div class="entry-tags">${(e.activities||[]).map(a=>'<span class="entry-tag">'+a+'</span>').join('')}</div>
+        </div>
+        ${e.note?'<div class="entry-note">'+e.note+'</div>':''}
+      </div>`).join('');
+    panel.innerHTML=`<div class="detail-panel-wrap"><div class="detail-header"><div class="detail-date">${fmtKey(key)}</div><button class="detail-close" onclick="document.getElementById('detail-panel').style.display='none'">×</button></div><div>${html}</div></div>`;
+    panel.style.display='block';
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
+  function exportCSV() {
+    const rows = [['Date','Time','Mood','Emoji','Activities','Flag','Note']];
+    Object.keys(allEntries).sort().forEach(key => {
+      (allEntries[key]||[]).forEach(e => {
+        rows.push([
+          fmtKey(key),
+          e.time_label||'',
+          e.mood||'',
+          e.emoji||'',
+          (e.activities||[]).join(' | '),
+          e.flag ? FLAG_LABELS[e.flag] : '',
+          (e.note||'').replace(/"/g,'""')
+        ]);
+      });
+    });
+    const csv = rows.map(r => r.map(cell => '"'+cell+'"').join(',')).join('\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-day-entries-'+todayKey()+'.csv';
+    a.click();
+  }
+
+  function exportJSON() {
+    const backup = {
+      exported_at: new Date().toISOString(),
+      entries: allEntries,
+      goals: goals,
+      projects: projects
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'my-day-backup-'+todayKey()+'.json';
+    a.click();
+  }
+
+  async function loadAllData(){
+    setSync('loading...',false);
+    try {
+      const [eRes,gRes,pRes]=await Promise.all([
+        db.from('entries').select('*').order('created_at',{ascending:false}),
+        db.from('goals').select('*').order('id',{ascending:true}),
+        db.from('projects').select('*').order('id',{ascending:true})
+      ]);
+      if(eRes.error||gRes.error||pRes.error) throw new Error('load failed');
+      allEntries={};
+      (eRes.data||[]).forEach(e=>{
+        if(!allEntries[e.day_key]) allEntries[e.day_key]=[];
+        allEntries[e.day_key].push(e);
+      });
+      goals=gRes.data||[];
+      projects=pRes.data||[];
+      renderTodayEntries(); renderGoals(); renderProjects(); updateFollowupBadge();
+      setSync('synced ✓',false);
+    } catch(e){
+      setSync('connection error — check your Supabase keys',true);
+    }
+  }
+
+  loadAllData();
+</script>
+</body>
+</html>
